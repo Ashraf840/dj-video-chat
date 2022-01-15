@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+{% load static %}
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dj Video Chat App</title>
+
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+
+    <h3 id="username"> Username </h3>
+
+    <div>
+        <input type="text" id="username-input">
+        <button id="btn-join">Join Room</button>
+    </div>
+
+
+
+    <div class="main-grid-container">
+        <!-- video Streaming Container -->
+        <div class="video-container">
+            <div>
+                <video src="" id="local-video"
+                    style="float: left" autoplay playsinline></video>
+                <button id="btn-toggle-audio">Audio Mute</button>
+                <button id="btn-toggle-video">Video Off</button>
+            </div>
+        </div>
+
+
+
+        <!-- Chat Container -->
+        <div id="chat">
+            <h3>Chat</h3>
+            <div id="messages">
+                <ul id="messages-list"></ul>
+            </div>
+
+            <div>
+                <input type="text" id="msg">
+                <button id="btn-send-msg">Send</button>
+                <button id="btn-share-screen">Share Screen</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/main.js' %}"></script>
+
+</body>
+</html>

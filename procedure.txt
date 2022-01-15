@@ -1,0 +1,71 @@
+#### Build a video chat app using django & WebRTC ####
+1. [SDP] Establish a peer-to-peer connection between two peers. In order to establish a p2p connection,
+   both peers need special info about each other called SDP (Session Description Protocol).
+
+2. [Signalling Server] Each peer needs to share their SDP with each other, thus they need an intermediary server
+   commonly known as signalling servers.
+
+   The signalling server will be established using the django-channels.
+
+3. [WebSockets] Both peers will connect using the WebSockets.
+
+4. [Network Info about the peers' machines]: When the signalling servers knows the location of each peer,
+    it can relay messages between the two peers. In that way, the two peers will change their SDPs.
+
+    Once both peers exchange their SDPs, they can establish a p2p connection.
+
+5. After establishing the p2p connection, the peers will noe require a signalling server. Because they can
+    communicate with each other using the peer to peer connection.
+
+#######################################################
+
+
+
+
+1. Create a new django app called "chat" & install that inside the project.
+    Create the "static" directory for storing the js, css files.
+    Create "templates" directory & define that into the system.
+
+2. Setup the basic template for the video chat app. Basic template is setup.
+
+3. [Install Requirement]:     pip install channels
+
+4. Implement the code for establishing the ASGI application config into the "asgi.py" file.
+    Explicitly define the ASGI application object into the settins.py file of the project.
+
+5. Create the "consume.py" file inside the "chat" application of the project.
+    [NOTE]:  "consumers" as similar to the "views". But this will handle the "WebSOcket" requests.
+
+    Inside the "consumers", we create a class extending the "AsyncWebsocketConsumer" which will be
+    consisting of some asynchronous functions.
+
+    The class will consist of the async func accordingly:  connect(), receive() & disconnect() funcs.
+
+    [NOTE]:  Django-channels generates "groups/rooms" in order to connect with the consumers. The groups keep channel names.
+    Each peer that connects to our django-channels server, will have a unique channel-name.
+    Groups essentially stores the collection of these channel-names. These are like rooms, each peer joins inside the room through channels.
+    Whenever a peer sends a msg, that will be sent to all the channels that are in the group, and that msg will be broadcast to all the peers who are inside that group.
+
+[connect() method]
+6. Create room-group name, & then the peer which connects to the consumer "ChatConsumer" needs to be added inside the channel-layer-group.
+    While adding the room-name inside the channel-layer, we've to paas the room-group-name & channel-name of the peer that is trying to connect.
+    Lastly we accept the peer connection using the "self.accept()" func.
+
+[disconnect() method]
+7. Create the "disconnect()" func to discard/ remove the channel name from the group/room.
+
+[receive() method]
+8. Depending on specific use-cases, we define the "receive()" func.
+
+[IMPORTANT]:  Most of the code will be written for sending our SDPs to other peers & notifying every peer whenever a new peer joins the room.
+
+[Explanation]
+    The "group_send()" func broadcast the data to all the peers in the room using another function "send_message()" through the 'type' key-value pair.
+    And the "send_message()" func uses the "send()" method to send the payload to the websocket after serializing the payload into json-dict.
+
+9. Implement the channel-layers config into the 'settings.py' file.
+
+10. Create "routing.py" file to handle the consumer. The routing files are similar to "urls.py" file.
+    
+
+

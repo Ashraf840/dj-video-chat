@@ -1,0 +1,28 @@
+# WebRTC Basics
+
+=>  WebRTC stands for Web RealTime Communication. In WebRTC, there are no intermideiary servers among the platforms.
+    The transfer of data is peer-to-peer for communication.
+
+
+[ in the surface-level brief ]:  A signalling server is responsible for establishing the connection between two clients ( browsers ).
+
+
+(WebRTC Connection)
+----------------------
+1st Step:  
+    the creation of offers. Simply, assume there are two clients ( client1, client2 ).
+    client1 sends an offer called Javascript object (SDP) to the signalling server.
+    [ NOTE ]:  SDP stands for Session Description Protocol. It's only contain the information about the media-configuration of the client1.
+    Then the signalling-server sends that SDP to the client2 & it'll store the SDP (offer) to it's local memory.
+    Once the 'client2' stores the offer of 'client1', it has to create it's answer in response to the offer (SDP) & lately sends that to the "client1" through the signalling-server.
+
+2nd Step:    
+    At this stage, the both machines know the media-configuration of each other, but still don't know how to establish connection between them.
+    For that, they need to interchange their network configurations using ICE ( Interactive Connectivity Establishment ).
+    Whenever the offers (SDPs) are interchanged, the ICE candidates start coming from the WebRTC candidates.
+    ICE candiadtes are generated from the STUN & TURN servers & sends along with the SDP offers. 
+    Thus the network configurations of the two peers are interchaged along with the SDPs ( offers ).
+    Using that network information, those two peers get connected.
+
+
+

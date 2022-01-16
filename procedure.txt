@@ -79,6 +79,11 @@
     [NOTE]:  Here, I'm using the redis-server as the message-broker/cache database.
 
 10. Create the "routing.py" file to handle the consumer. The routing files are similar to "urls.py" file. It'll route the client-request to the appropriate consumers.
-    
 
+
+----------------------- Forntend JavaScript
+
+[inside 'main.js']
+
+11. Fetch the user-input from the input-field meant for the inserting room-name.
 

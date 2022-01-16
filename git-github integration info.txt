@@ -1,0 +1,6 @@
+GitHub Branches
+    1. dev:  push any modified repo from the home desktop.
+    2. office_desktop:  push any modified repo from the office desktop.
+
+Git Branch (Home Desktop)
+    1. dev: for any kind of pull request from the "office_desktop" (GitHub Branch)

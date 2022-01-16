@@ -86,4 +86,26 @@
 [inside 'main.js']
 
 11. Fetch the user-input from the input-field meant for the inserting room-name.
+    Get the current location along with other information of the client-request. It'll be stored in a variable as an object since the "window.location" returns object.
+
+12. Create an event-listener to the join-room-btn. Inside this func, the websocket-url will be made after fetching the userName-input.
+    With the help of data get from the "window.location", the websocket-url will be created.
+    After generating the websocket-url, instantiate a websocket-instance & pass that url inside the websocket-instantiation-param.
+    This will connect with the url build inside the 'src/chat/routing.py' file.
+    [NOTE] And a new-instance of the chat-consumer will be created for each connection made with the websocket-url using the websocket.
+
+13. Create the complete lifecycle of websocket connection using the socket instance: socket.onopen, socket.onmessage, socket.onclose, socket.onerror
+
+    [NB]: With this config, the websocket connection will throw an error, since we didn't mention the websocker-routing in our 'asgi.py' file,
+
+    [Install software (home-desktop) ]:   Install redis-server inside the home-desktop.
+
+    [Install Requirement]:     pip install channels-redis
+
+14. Since the websocket url uses the locations-pathname from the url, we attach the 'chat/' url-string in the consumer-routing inside the 'routing.py' file.
+
+    [NB]:  Testing the websocket connection using the websocketking.
+        Ref:  https://websocketking.com/
+
+
 

@@ -8,7 +8,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         # instantiate a room-group-name (initially there will be only one group-room for now)
         self.room_group_name = 'Test-Room'
-        print( 'A room group %s is created!', self.room_group_name )
+        print( 'A room group %s is created!' % self.room_group_name )
 
         await self.channel_layer.group_add(
             self.room_group_name,
@@ -40,7 +40,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-    # this func will be used while broadcasting the msg-payload to all the peers of the group/room.
+    # this func will be used while send the msg-payload to each peer of the group/room.
     async def send_message(self, event):
         message = event['payload']  # get the key from the "channel_layer.group_send()" method
         # broadcast the msg to all the peers of the group through channels. Using param "text_data" & serialize the python-dict into a json-dict

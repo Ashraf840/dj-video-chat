@@ -55,17 +55,30 @@
 7. Create the "disconnect()" func to discard/ remove the channel name from the group/room.
 
 [receive() method]
-8. Depending on specific use-cases, we define the "receive()" func.
+8. Depending on specific use-cases, we define the "receive()" func. This func will initially de-serialize the json-dict sent from the client.
+    Then extract the message from the de-serialized/converted python-dict.
+    Through the "group_send()" method of this func, the django-channels will broadcast the msg to all the channels of the group.
+    [Main Func: "group_send()"]
+    It'll use the "group_send()" func, and the func expects the "room_group_name" & a dict. This dict will contain another dependency-func ("send_message") which
+    is responsible for sending the msg to the client-side.
+
+    [NOTE]:  Everytime the "group_send()" method sends a msg through a channel, it invokes the "send_message()" method of this class (ChatConsumer).
+    Since we're using the channel_layers, we need to specify the message_broker/cache_memory in the 'settings.py' file, which will be used by the django-channels.
+
+    [Dependency Func: "send_message()"]
+    This func will extract the message from the 'event' param. Then it'll send the message asynchronously to the client-side after serializing into json-dict.
 
 [IMPORTANT]:  Most of the code will be written for sending our SDPs to other peers & notifying every peer whenever a new peer joins the room.
 
 [Explanation]
-    The "group_send()" func broadcast the data to all the peers in the room using another function "send_message()" through the 'type' key-value pair.
+    The "group_send()" func will broadcast the data to all the peers in the room using another function "send_message()" through the 'type' key-value pair.
     And the "send_message()" func uses the "send()" method to send the payload to the websocket after serializing the payload into json-dict.
 
-9. Implement the channel-layers config into the 'settings.py' file.
+[Channel-layers config in 'settings.py' file]
+9. Implement the channel-layers config into the 'settings.py' file, thus which message-broker/cache server it'll use will be explicitly defined in the config.
+    [NOTE]:  Here, I'm using the redis-server as the message-broker/cache database.
 
-10. Create "routing.py" file to handle the consumer. The routing files are similar to "urls.py" file.
+10. Create the "routing.py" file to handle the consumer. The routing files are similar to "urls.py" file. It'll route the client-request to the appropriate consumers.
     
 
 

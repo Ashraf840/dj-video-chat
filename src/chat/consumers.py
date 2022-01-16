@@ -35,16 +35,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
             {
                 # [Compulsory Key] define the type, which will be corresponding to the async-func-name. The mentioning func will be used by the consumer to send the dict/msg to all the peers of the group.
                 'type': 'send_message',
+                # payload, received from a client (peer) of a room/group
                 'payload': message
             }
         )
 
-        async def send_message(self, event):
-            message = event['payload']  # get the key from the "channel_layer.group_send() method"
-            # broadcast the msg to all the peers of the group through channels. Using param "text_data" & serialize the python-dict into a json-dict
-            await self.send(text_data=json.dump({
-                'message': message,
-            }))
+    # this func will be used while broadcasting the msg-payload to all the peers of the group/room.
+    async def send_message(self, event):
+        message = event['payload']  # get the key from the "channel_layer.group_send()" method
+        # broadcast the msg to all the peers of the group through channels. Using param "text_data" & serialize the python-dict into a json-dict
+        await self.send(text_data=json.dump({
+            'message': message,
+        }))
 
 
     # a client (browser) will disconnect from this consumer using this following func

@@ -108,4 +108,69 @@
         Ref:  https://websocketking.com/
 
 
+15. As soon as, the websocket makes a successful connection with the backend channels-consumer, construct a js-object (dictionary) &
+    then serialize that js-obj with the key called 'message' using the "JSON.stringify()".
+    [NB]:  The reason for constructing the js-obj with the key called 'message' is that the backend consumer-class ("ChatConsumer") is established the "receive()" method in such a way that it
+    expects to extract the JSON-obj sent from the frontend by calling the 'message' key.
+
+|----------------------------------------------['Payload' transferring life-cycle]----------------------------------------------|
+
+>>>> class-consumer (ChatConsumer) // Backend:
+"connect()" method:     This method will use the "channel_layer" to add a group with the "room_group_name" & "channel_name" by using the "group_add()" method.
+        Then it'll accept the peer connection using the "accept()" method.
+
+"receive()" method:     This method will use the "channel_layer" to broadcast the message to each client-channels thorugh provoking the "send_message()" message.
+        Thus, the "group_send()" method expects a dictionary where the 'romm_group_name' is explicitly defined, a dictionary where the 'send_message()' method
+        gets provoked using the key-value pair. Inside that dictionary, the received_message will also be assigned as a key-value pair. This dictionary is used to provoke the "send_message()" method & pass the message (payload) to the 'send_message()' method.
+
+        "send_message()" method:    This method's job is to send the message to each client-channel. Before sending to each channel, it firstly extract the message sent from the "group_send()" method of the "receive()" method.
+        But before sending the message to every channel, we need to serialize that into json-obj using the "json.dumps()" method.
+
+"disconnect()" method:      This method will discard the client-channel from the group using the channel_layer and the "group_discard()" will be able to remove the client-channel from the group using the info of "room_group_name" & "channel_name"
+
+
+>>>> Websocket // Frontend:
+"websocket" instance:   Instantiate the websocket object inside the javascript file.
+
+websocket.onopen (socket.onopen):   Using the "socket.onopen()" method, the connection will be built with the backend channel consumer. We will also send any kind of payload from the frontend to the backend-channel-consumer using the "socket.send()" method.
+
+websocket.onmessage (socket.onmessage):     This func will be responsible for receiving any payload from the backend-channel-consumer. Firstly, it'll de-serialize the payload which is in the json-obj format using the "json.stringify()" funtion. Then extract the payload using the "message"-key.
+    Then from this function, we can use vanilla-js to make the DOM manipulation.
+
+websocket.onclose (socket.onclose):     This func will be responsible for closing the connection between the frontend-websocket with the backend-channel-consumer.
+
+|----------------------------------------------['Payload' transferring life-cycle]----------------------------------------------|
+
+
+16. Inside the frontend websocket, the "onopen()" connection will open the websocket connection & through using this function, we should sent message to the backend-channels-consumer, then that consumer will receive the payload using the 'receive()' method.
+    Then that "receive()" method will use the "group_send()" method which provokes the "send_message" to broadcast that received payload to each channels connected with that room.
+    When sent the "payload" again to the frontend, the "onmessage()" function will receive that and display to each client joined in that room.
+
+
+
+|----------------------------------------------[Fetch the local audio & video from the webcam & microphone]----------------------------------------------|
+
+17. Instantiate the MediaStream object and assign that into a variable. Lately, which will contain our local audio & video.
+    This will also be the source of our video element for streaming video which is inside the HTML file.
+
+18. A dictionary (js-object) will be created which will specify whether we want to stream audio or video. Initially we want to stream both audio & video.
+    Thus, it'll contain a key-value pair where the values will be in a boolean format.
+
+[NB]:  This will be outside the scope of the 'click' event-listener.
+
+19. ["MediaStream" object] Create an empty "MediaStream" object.
+    [NOTES]: This represents a stream of media contents. A stream consists of several tracks such as audio, video tracks.
+
+['navigator' object]:  The navigator object contains information about the browser.
+
+20. [mediaDevices.getUserMedia() object]:  With the use of 'navigator' object along with the 'mediaDevices.getUserMedia()' method, the user will be
+    prompted for the permission to use the media input which produces the MediaStream with tracks containing the requested types of media.
+    Inside the function param, we'll pass the 'constraints' dictionary , which will contain the boolean-value of audio & video media-stream.
+    [NB]:  As soon as the 'getUserMedia' finished its execution, it'll return a MediaStream object, which then will be fetched by the "then()" func.
+    Attach a "then()" func with the 'mediaDevices.getUserMedia(constraints)' func that will return a promise. Inside this 'then()' method, we'll assign
+    the prompted-mediaStream object with the empty-MediaStream object. Then the source of the DOM-video-element will be assigned from the 'localStream' object (firstly it's an empty-mediaStream object.
+    But the audio of 'localVideo' will be muted by default, since we don't want to hear the sound of our own voice through streaming the local-media (including audio-video).
+
+21. With the use of "then()" promise method, for handling any error, we'll use the catch method to display any kind of error to the client's console.
+
 

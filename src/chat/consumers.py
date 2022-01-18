@@ -27,6 +27,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         receive_dict = json.loads(text_data)   # convert the json-dict into python-dict
         message = receive_dict['message']     # extract the message from the converted-python-dict, cause we're going to send a dict which has that msg attribute.
+        # [NOTE]:  Thus, we need to construct an object (dictionary) with a 'message'-key from the frontend & then serialize that into JSON-obj before sending that into the backend consumer.
+
+        print('The payload (sent from the frontend):', message)
 
         # now we will send/broadcast the msg to all the other peers of the group.
         await self.channel_layer.group_send(
@@ -43,8 +46,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # this func will be used while send the msg-payload to each peer of the group/room.
     async def send_message(self, event):
         message = event['payload']  # get the key from the "channel_layer.group_send()" method
-        # broadcast the msg to all the peers of the group through channels. Using param "text_data" & serialize the python-dict into a json-dict
-        await self.send(text_data=json.dump({
+        # broadcast the msg to all the peers of the group through channels. Using param "text_data" & serialize the python-dict into a json-dict using the "json.dumps()" message.
+        await self.send(text_data=json.dumps({
             'message': message,
         }))
 

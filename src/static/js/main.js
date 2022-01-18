@@ -48,7 +48,7 @@ btn_Join.addEventListener('click', () => {
     // generate the websocket-url
     var url = wsStart + loc.host + loc.pathname;
 
-    // console.log(url);
+     console.log('Websocket endpoint: ', url);
 
     // instantiate a websocket-obj & pass the url inside
     let socket = new WebSocket(url);
@@ -58,18 +58,27 @@ btn_Join.addEventListener('click', () => {
     // connect the frontend websocket with the backend consumer
     socket.onopen = function (e) {
         console.log('Frontend Websocket: Connection Established!');
+
+        // Construct a msg using the 'message'-key
+        var jsonMsg = JSON.stringify({
+            'message': 'This a message'
+        });
+
+        // After constructing the msg & serialize that into json-format, we need to use the "websocket.send()" method to send that msg into the backend consumer.
+        socket.send( jsonMsg )
     }
 
     // receive any messages sent from the backend consumer as json-format
     socket.onmessage = function (e) {
+        console.log('Frontend Websocket ("onmessage" function): Receive messages!')
         console.log(JSON.parse(e.data));
 
         // de-serialize the json-string into js-object
         // [NOTE]: equivalent to "json.loads()" in python for de-serializing into the native format
         var parsedData = JSON.parse(e.data);
 
-        // the backend-consumer is going to sent a payload along with the key 'payload', so we need to extract that key-value ("payload") from the parsed-js-object
-        var payload = parsedData['payload'];
+        // the backend-consumer is going to sent a payload along with the key 'message' (NB: The 'send_message()' method will sent that payload), so we need to extract that key-value ("message") from the parsed-js-object
+        var payload = parsedData['message'];
 
         console.log('payload: ', payload);
     }
@@ -84,3 +93,41 @@ btn_Join.addEventListener('click', () => {
         console.log('Frontend Websocket: Error occurred!');
     }
 });
+
+
+
+// >>>>>>>> Get the audio & video from the client's local machine <<<<<<<<
+// Create an empty "MediaStream" object
+var localStream = new MediaStream();
+
+const constraints = {
+    'audio': true,
+    'video': true,
+};
+
+
+// access client's webcam
+
+//  after finishing the execution, it's going to return a stream. For streaming the video from the local-machine,
+//  we are calling the local-video streaming element from the DOM.
+const localVideo = document.querySelector('#local-video');
+
+
+// it's an asynchronous-func, thus we need to make sure the code is fully executed before moving on to the next part.
+var userMedia = navigator.mediaDevices.getUserMedia(constraints)
+    // as soon as the 'getUserMedia' finished its execution, it'll return a MediaStream object.
+    .then(stream => {
+        // assign the stream to our 'localStream' variable
+        localStream = stream;
+        // assign the 'localStream' as the source-object of our HTML-video-element
+        localVideo.srcObject = localStream;
+        // also mute ourselves, since we don't want to listen to ourselves.
+        localVideo.muted = true;
+    })
+    // In case we encounter an error, then we should handle that wrror using the catch-codeBlock
+    .catch(error => {
+        // the error will be console logged
+        console.log('Error accessing media devices!', error);
+    });
+
+

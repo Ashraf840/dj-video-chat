@@ -8,7 +8,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         # instantiate a room-group-name (initially there will be only one group-room for now)
         self.room_group_name = 'Test-Room'
-        print( 'A room group %s is created!' % self.room_group_name )
+        print('A room group %s is created!' % self.room_group_name)
+        print('Channel Name ("connect" method):', self.channel_name)
+        print('Unique channel name is generated each time a peer connects with the consumer using django-channels!')
 
         await self.channel_layer.group_add(
             self.room_group_name,
@@ -31,24 +33,31 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         print('The payload (sent from the frontend):', message)
 
+        # the "text_data" will contain the message as a "dict".
+        # Thus, we'll assign a new-value pair in the sub-dict contained by the message-dict.
+        # This key-value pair will contain the channel_name
+        message['receiver_channel_name'] = self.channel_name
+
         # now we will send/broadcast the msg to all the other peers of the group.
         await self.channel_layer.group_send(
             # send the room-group-name
             self.room_group_name,
             {
                 # [Compulsory Key] define the type, which will be corresponding to the async-func-name. The mentioning func will be used by the consumer to send the dict/msg to all the peers of the group.
-                'type': 'send_message',
+                'type': 'send_sdp',
                 # payload, received from a client (peer) of a room/group
-                'payload': message
+                # 'payload': message,
+                'receive_dict': receive_dict,   # contains the 'peer', 'action', 'message' key-value pairs
             }
         )
 
     # this func will be used while send the msg-payload to each peer of the group/room.
-    async def send_message(self, event):
-        message = event['payload']  # get the key from the "channel_layer.group_send()" method
+    # [NB]:  rename the "send_message" to "send_sdp"
+    async def send_sdp(self, event):
+        payload = event['receive_dict']  # get the key from the "channel_layer.group_send()" method
         # broadcast the msg to all the peers of the group through channels. Using param "text_data" & serialize the python-dict into a json-dict using the "json.dumps()" message.
         await self.send(text_data=json.dumps({
-            'message': message,
+            'payload': payload,
         }))
 
 

@@ -53,19 +53,24 @@ btn_Join.addEventListener('click', () => {
     // instantiate a websocket-obj & pass the url inside
     let socket = new WebSocket(url);
 
-    // -----complete the websocket life-cycle-----
+    // -------complete the websocket life-cycle----------------------------------------------
 
     // connect the frontend websocket with the backend consumer
     socket.onopen = function (e) {
         console.log('Frontend Websocket: Connection Established!');
-
+        //------------------------------------------------------------------------------------ (Instead of sending a dummy serialized-json-object, call the "sendSignal" function)
         // Construct a msg using the 'message'-key
-        var jsonMsg = JSON.stringify({
-            'message': 'This a message'
-        });
-
+        // var jsonMsg = JSON.stringify({'message': 'This a message'});
         // After constructing the msg & serialize that into json-format, we need to use the "websocket.send()" method to send that msg into the backend consumer.
-        socket.send( jsonMsg )
+        // socket.send( jsonMsg )
+        //------------------------------------------------------------------------------------
+
+        // call the "sendSignal" func to send signals to other peers, although an empty-dict will be provided while provoking the "sendSignal" function.
+        sendSignal(
+            'new-peer',
+            {'signal-msg': 'This is a dummy signal message to other peers!'},
+            socket=socket
+        );
     }
 
     // receive any messages sent from the backend consumer as json-format
@@ -78,7 +83,7 @@ btn_Join.addEventListener('click', () => {
         var parsedData = JSON.parse(e.data);
 
         // the backend-consumer is going to sent a payload along with the key 'message' (NB: The 'send_message()' method will sent that payload), so we need to extract that key-value ("message") from the parsed-js-object
-        var payload = parsedData['message'];
+        var payload = parsedData['payload'];
 
         console.log('payload: ', payload);
     }
@@ -129,5 +134,31 @@ var userMedia = navigator.mediaDevices.getUserMedia(constraints)
         // the error will be console logged
         console.log('Error accessing media devices!', error);
     });
+
+
+
+// Construct a msg using the 'message'-key
+// When a new peer joins the room, it's going to set the 'action' -key to 'new-peer' &
+// all the other peers will use the 'action' -key as received object, &
+// when they see the 'action' -key as "new-peer", they'll understand that they've to send
+// an offer to this new-peer. And the existing peers will change the 'action' -key to 'new-offer'.
+// The new peers sends response to the existing peers & set the dictionary-key ("action") to "new-answer" followed by receiving the dictionary which contains the 'action' -key as "new-offer".
+
+
+// function to send signal (msg-dict & action) to other peers;
+// [NOTE]:  This is invoked (called) inside the "websocket.onopen()" function.
+function sendSignal(action, message, socket) {
+    var jsonMsg = JSON.stringify({
+        'peer': username,   // it'll contain the value fetched from the user for joining the room
+        'action': action, // regarding the "Scheme to Build P2P Connection"
+        'message': message,  // dict-type
+    });
+
+//    let socket = new WebSocket(url);
+
+    // After constructing the msg & serialize that into json-format, we need to use the "websocket.send()" method to send that msg into the backend consumer.
+    socket.send( jsonMsg );
+}
+
 
 

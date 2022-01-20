@@ -139,6 +139,18 @@ websocket.onmessage (socket.onmessage):     This func will be responsible for re
 
 websocket.onclose (socket.onclose):     This func will be responsible for closing the connection between the frontend-websocket with the backend-channel-consumer.
 
+
+|----------------------------------------------[Starting 'Redis-Server' in Ubuntu WSL]------------------------------------------|
+# Open the Ubuntu WSL.
+# Access the administration-mode using the following cmd.
+        sudo su
+# Run the following command to start the redis-server.
+        service redis-server start
+# To check the redis-server status, tun the following cmd.
+        service redis-server status
+|-------------------------------------------------------------------------------------------------------------------------------|
+
+
 |----------------------------------------------['Payload' transferring life-cycle]----------------------------------------------|
 
 
@@ -173,4 +185,52 @@ websocket.onclose (socket.onclose):     This func will be responsible for closin
 
 21. With the use of "then()" promise method, for handling any error, we'll use the catch method to display any kind of error to the client's console.
 
+
+
+|----------------------------------------------[Building Peer to Peer Connection using WebRTC]----------------------------------------------|
+
+offer SDP: sends by the existing peers to the new peer
+answer SDP:  sends response from the new peer to each existing peers
+
+[Important Note]:  Build on a peer-to-peer-mesh architecture. Moreover, this architecture is good to learning the basics of webRTC.
+
+[Cons]:  It'll cause end-users to experience considerable amount of latency as the number of users grow, if we use P2P Mesh architecture.
+        Thus, in such scenarios, other architectures like MCU, SFU should be used instead.
+
+>>>>>>>>> Scheme to Build P2P Connection <<<<<<<<<
+# peer joins the room
+# sends messages to all the other peers indicating its entry
+# all the other peers get notified of the new peer through this message
+# each existing peer initiates peer-connection with the new peer (offer SDP); by sending in an offer SDP through a message.
+# new peer will receive each offer SDP
+# new peer sends response (answer SDP) to each offer SDP
+# other existing peers will receive the respective SDPs
+# finally, the new peer gets connected with each existing peer (formed a peer-to-peer-mesh)
+>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<
+
+22. Along with sending the simple dictionary to the django-channels through the "onopen" func, we'll create
+    another dictionary after the "onclose" func, which will also be sent to the backend-django-channels.
+    For establishing the signalling, we need few more key-value pairs in the new serialized dictionary.
+    The dictionary will contain "peer", "action" & "message". The 'action' key-value pair will be used to
+    build logics for sharing offer-SDPs & answer-SDPs.
+    The 'message' -key will contain another dictionary.
+
+[NOTE]:  The whole process for inter-changing the SDPs between the peers will have the same structure of dictionary.
+
+23. Since the user-name will be the same, for sending the signal, we're going to build a function ("sendSignal"), which will receive two params ("action", "message").
+    Thus, we should move the dictionary & the websocket-send function inside that function ("sendSignal"). Later the "sendSignal" function will be invoked.
+
+24. Now, inside the websocket-onopen function, we'll invoke the "sendSignal" function to send signals (msg-dict & action) to other peers.
+    [NB]:  Instead of sending a dummy serialized JSON-obj, now we'll provoke the "sendSignal" function, and provide the action param as "new-peer" & message as a dummy-string.
+    Each peers will have their own channel-names, which will be passed inside the 'message' -key value of the main-dictionary (the 'message' -key will contain a dictionary too).
+    The sub-dict which is meant for the "message" -key will be an empty-dictionary.
+    Since an empty-dict will be passed to the backend-consumer, we'll assign another key-value pair to the message-sub-dict. This key-value pair will contain unique-channel-name
+    whenever a peer joins to the backend-consumer. This will be handled inside the "receive()" method of the "ChatConsumer" class.
+    [NOTE]:  Whenever a peer connects to the backend-consumer, it's going to have a unique-channel-name, and that's what they've to send to all other-peers. Because, in this way,
+    the other existing peers will know where to send offer-SDPs.
+
+>>>>>>>>> Peer & Channel-name (through 'message' sub-dict), action is send in between the frontend & backend using django-channels & js-websocket.
+
+25. Instead of using the method-name as "send_message()" in the "ChatConsumer" class, we'll rename the method-name as "send_sdp".
+    Also, instead of group_sending the "message" sub-dict only, send the whole json-dict to the frontend. Thus, the frontend will receive the whole dict (peer, action & message (sub-dict))
 

@@ -141,6 +141,7 @@ websocket.onclose (socket.onclose):     This func will be responsible for closin
 
 
 |----------------------------------------------[Starting 'Redis-Server' in Ubuntu WSL]------------------------------------------|
+Solution Ref:  https://stackoverflow.com/a/52919706
 # Open the Ubuntu WSL.
 # Access the administration-mode using the following cmd.
         sudo su

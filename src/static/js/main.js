@@ -76,7 +76,7 @@ btn_Join.addEventListener('click', () => {
     // receive any messages sent from the backend consumer as json-format
     socket.onmessage = function (e) {
         console.log('Frontend Websocket ("onmessage" function): Receive messages!')
-        console.log(JSON.parse(e.data));
+    // console.log(JSON.parse(e.data));
 
         // de-serialize the json-string into js-object
         // [NOTE]: equivalent to "json.loads()" in python for de-serializing into the native format
@@ -84,8 +84,28 @@ btn_Join.addEventListener('click', () => {
 
         // the backend-consumer is going to sent a payload along with the key 'message' (NB: The 'send_message()' method will sent that payload), so we need to extract that key-value ("message") from the parsed-js-object
         var payload = parsedData['payload'];
+        var peerUsername = parsedData['payload']['peer'];
+        var action = parsedData['payload']['action'];
+        var receiver_channel_name = parsedData['payload']['message']['receiver_channel_name'];
+        // console.log('Peer Username: ', peerUsername)
 
-        console.log('payload: ', payload);
+
+        // check if the username is equal to the peerUsername, then avoid displaying the payload to the current-client. (other clients will see the current-client's connection-message)
+        // the "username" will get the value from the user-input-field for joining a room.
+        // the "peerUsername" will be got from the backend-channel to frontend-websocket
+        if (username == peerUsername) {
+            return;   // won't allow the JS to execute anymore code
+        }
+
+        // since the current user gets avoided, the other existing users will now create an offer, which will later be sent to the new-peer.
+        // The offer will consist of peerUsername & it's channel-name
+        if (action == 'new-peer') {
+            // offer-sdp will be created by other existing-peers
+            createOffer(peerUsername, receiver_channel_name);
+            console.log('payload: ', payload);
+            return;     // won't allow the JS to execute anymore code
+        }
+
     }
 
     // disconnect the frontend websocket from the backend consumer
@@ -154,7 +174,7 @@ function sendSignal(action, message, socket) {
         'message': message,  // dict-type
     });
 
-//    let socket = new WebSocket(url);
+    // let socket = new WebSocket(url);
 
     // After constructing the msg & serialize that into json-format, we need to use the "websocket.send()" method to send that msg into the backend consumer.
     socket.send( jsonMsg );
@@ -162,3 +182,81 @@ function sendSignal(action, message, socket) {
 
 
 
+// function to create RTCPeerConncetion
+function createOffer(peerUsername, channelName) {
+    var peer_conn = new RTCPeerConncetion(null);
+
+    // add local-tracks; pass the "peer_conn" object
+    addLocalTracks(peer_conn);
+
+    // instantiate a dataChannel using the "peer_conn" obj
+    var dc = peer_conn.createDataChannel('channel');
+
+    // open the data-channel connection
+    dc.onopen = e => {
+        console.log('Connection Opened!');
+    }
+
+    // create an "onmessage" func to receive any message/dict/packet from the other client
+    dc.onmessage = e => {
+        console.log("New Message: " + e.data);
+    }
+
+    // create a new video-element for the remote-peer using a function ("createRemoteVideo"); pass the userName of the remote-peer though the function ("createRemoteVideo").
+    // it'll create the video-element along with the video-container & the video-wrapper.
+    var remoteVideo = createRemoteVideo(peerUsername);
+
+    // set the "peer_conn" obj along with the remoteVideo using the "setOnTrack()" function.
+    // the media-stream of the new remote peer will be added to the "RTCPeerConnection" object.
+    // So that the existing peer window will be able to stream the media of the remote new peer.
+    setOnTrack(peer_conn, remoteVideo);
+}
+
+
+// create video-element (video-container) of the remotePeer in the existing peers window.
+// Any new-peer which gets connected create a new video-element underneath the primary video-element
+function createRemoteVideo(peerUsername) {
+    var video_container = document.querySelector('.video-container');
+
+    // create remote-video elem
+    var remoteVideo = document.createElement('video');
+    // set the id of the newly-created remote-video using the "peerUsername"+ "-video"
+    remoteVideo.id = peerUsername + "-video";
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true
+
+    // since the video-element resides inside a div, thus create another element which returns a "div"
+    var video_wrapper = document.createElement('div');
+
+    video_container.appendChild(video_wrapper);
+    video_wrapper.appendChild(remoteVideo);
+
+    return remoteVideo;
+}
+
+
+// function to get the local-media stream & later add those tracks to the "RTCPeerConnection" Obj
+function addLocalTracks(peer_conn) {
+    // make a for-each loop on the localMedia stream to get all the tracks
+    // from the local-media using the "getTracks()" function and add each track to the "peer_conn" object we found from the "localStream" obj.
+    localStream.getTracks().foreach(track => {
+        peer_conn.addTrack(track, localStream);     // adding each available tracks to the "RTCPeerConncetion" object.
+    });
+}
+
+
+
+
+// get the media stream of the new remote peer
+function setOnTrack(peer_conn, remoteVideo) {
+    // Instantiate the "MediaStream" obj
+    var remote_stream = new MediaStream();
+
+    // assign the remote-video-stream of the new peer inside the new remote-video-element
+    remoteVideo.srcObject = remote_stream;
+
+    // create an "ontrack" function on the "peer_conn" object, whose event will be asynchronous & add the tracks to the "remote_stream" object.
+    peer_conn.ontrack = async (e) => {
+        remote_stream.addTrack(e.track, remote_stream);
+    };
+}

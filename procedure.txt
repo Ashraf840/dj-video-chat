@@ -233,5 +233,27 @@ answer SDP:  sends response from the new peer to each existing peers
 >>>>>>>>> Peer & Channel-name (through 'message' sub-dict), action is send in between the frontend & backend using django-channels & js-websocket.
 
 25. Instead of using the method-name as "send_message()" in the "ChatConsumer" class, we'll rename the method-name as "send_sdp".
-    Also, instead of group_sending the "message" sub-dict only, send the whole json-dict to the frontend. Thus, the frontend will receive the whole dict (peer, action & message (sub-dict))
+    Also, instead of group_sending the "message" sub-dict only, now we'll send the whole json-dict to the frontend. Thus, the frontend will receive the whole dict (peer, action & message (sub-dict)).
+
+26. The purpose of sending the whole dict (contains 'peer', 'action', 'message') is to get the whole info to the frontend.
+    Later, we'll build a condition to check if the username of the current-user is equal to the peerName sent from the backend, then the current-user will ignore the connection-message.
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>> WebRTC Crash Course
+Now watch the video explaining the WebRTC. Later we'll continue builing the remaining project of building real-time video-chat application.
+YouTube:  https://www.youtube.com/watch?v=FExZvpVvYxA
+
+
+27. Get all the info about the "peer", "action" & "message" -dict into the javascript file. Also get the channel-name from the "message" -dict sent from the backend.
+
+28. Since a condition (checking the backend peerName-value with the current-username-value) to avoid displaying the peer-connection message to the current user,
+    then there will be another condition to check if the "action" key-value from the "payload" contains the value "new-peer", if that's true, then execute another
+    func called "createOffer()".
+    Instantiate the built-in "RTCPeerConnection" object.
+    Inside this "createOffer()" func, there will be another function to add all the media-tracks (from the local-machine) to the "peer_conn" ("RTCPeerConnection" obj) using the "addTracks()" function on the "peer_conn" obj.
+    For adding tracks to the "peer_conn" object, a foreach-loop will be used on the "localStream" object.
+    [NB]:  The "addTracks()" function from the "peer_conn" object will exoect to receive the track fetched using the foreach-loop & the "localStram" obj.
+
+29. Now, create a dataChannel-object in the "createOffer" function & the "onopen" func will be executed using the dataChannel-obj.
+
 

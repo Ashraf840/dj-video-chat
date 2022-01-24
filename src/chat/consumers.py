@@ -34,7 +34,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print('The payload (sent from the frontend):', message)
 
         # the "text_data" will contain the message as a "dict".
-        # Thus, we'll assign a new-value pair in the sub-dict contained by the message-dict.
+        # Thus, we'll assign a new KEY-VALUE pair in the sub-dict contained by the message-dict.
         # This key-value pair will contain the channel_name
         message['receiver_channel_name'] = self.channel_name
 
@@ -43,7 +43,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # send the room-group-name
             self.room_group_name,
             {
-                # [Compulsory Key] define the type, which will be corresponding to the async-func-name. The mentioning func will be used by the consumer to send the dict/msg to all the peers of the group.
+                # [Compulsory Key] define the type, which will be corresponding to the async-func-name. The mentioning func ("send_sdp") will be used by the consumer to send the dict/msg to all the peers of the group.
                 'type': 'send_sdp',
                 # payload, received from a client (peer) of a room/group
                 # 'payload': message,

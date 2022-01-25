@@ -242,18 +242,53 @@ answer SDP:  sends response from the new peer to each existing peers
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>> WebRTC Crash Course
 Now watch the video explaining the WebRTC. Later we'll continue builing the remaining project of building real-time video-chat application.
 YouTube:  https://www.youtube.com/watch?v=FExZvpVvYxA
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
+
+
+
+>>>>>>>>> [Inside "socket.onmessage()" func] <<<<<<<<<
 27. Get all the info about the "peer", "action" & "message" -dict into the javascript file. Also get the channel-name from the "message" -dict sent from the backend.
 
-28. Since a condition (checking the backend peerName-value with the current-username-value) to avoid displaying the peer-connection message to the current user,
+>>"createOffer()" Function
+28. Build a condition (checking the backend-peerName-value with the current-frontend-username-value) to avoid displaying the same-peer-connection message to the current user,
     then there will be another condition to check if the "action" key-value from the "payload" contains the value "new-peer", if that's true, then execute another
-    func called "createOffer()".
-    Instantiate the built-in "RTCPeerConnection" object.
-    Inside this "createOffer()" func, there will be another function to add all the media-tracks (from the local-machine) to the "peer_conn" ("RTCPeerConnection" obj) using the "addTracks()" function on the "peer_conn" obj.
-    For adding tracks to the "peer_conn" object, a foreach-loop will be used on the "localStream" object.
-    [NB]:  The "addTracks()" function from the "peer_conn" object will exoect to receive the track fetched using the foreach-loop & the "localStram" obj.
+    func called "createOffer()". This "createOffer()" func will be created by the existing users and will be sent as offer-SDP to the newly connected peer.
+    Instantiate the built-in "RTCPeerConnection" object inside the "createOffer()" func.
+    Inside this same func, there will be another function to add all the local-media-tracks (from the local-machine of the existing users) to the "peer_conn" ("RTCPeerConnection" obj) using the "addTracks()" function on the "peer_conn" obj.
+        [inside the "addLocalTracks()" func] For adding tracks to the "peer_conn" object, a foreach-loop will be used on the "localStream" object.
+            [NB]:  The "addTracks()" function used on the "peer_conn" object will expect to receive the track fetched using the foreach-loop along with the "localStream" obj.
 
-29. Now, create a dataChannel-object in the "createOffer" function & the "onopen" func will be executed using the dataChannel-obj.
+    Now, create a dataChannel-object inside the "createOffer()" func using the "peer_conn" obj & then "onopen" func will be executed using the dataChannel-obj.
+    Also, execute the "dataChannel.onmessage" func to receive any data through the dataChannel.
+
+    Below that, there will be another func ("createRemoteVideo") to create HTML video-elem which will create video-elem to the existing peer-windows as soon as any new-peer joins the room.
+    The func will expect the "peerUsername" which is dispatched from the backend-dj-channel. The "peerUsername" is required to be passed inside the func because the new video-elem will contain the "peerUsername" in the "id" of the HTML-elem.
+        [inside the "createRemoteVideo()" func] Firstly, get the parent-video-container, and then create a new video-elem as store that inside the "remoteVideo" variable.
+        Assign the id if this video-elem along with the peerUsername.
+        Also, set the autoplay & playsInline attributes to true.
+        Then, create another element which is a div. This div elem will be appended by the parent-video-container, similarly, the "div" elem will append the "remoteVideo" element.
+        Lastly, this "createRemoteVideo()" func will return the "remoteVideo" elem & later this func will be stored in a variable from where its get called.
+
+    After that, there will be another fun ("setOnTrack") to fetch all the media-streams of the newly joined remote-peer. This func will except the "RTCPeerConnection" obj & the "remoteVideo" element.
+        [inside the "setOnTrack()" func]  Create another "MediaStream()" obj. This object's stream will be assigned to the "srcObject" of the "remoteVide" elem which is intended to be created in the existing peers' window.
+        Now the remote-peers media-tracks will be added inside the "MediaStream" obj using the "addTracks()" func.
+
+    [The confusing part]:  While using the "addTracks()" func on the "peer_conn" obj inside the "addLocalTracks()" func, the "localStreamMedia" obj gets all the tracks of the existing peers & adds to the "RTCPeerConnection" Object ("peer_conn"). So that the remote peer gets the media of the existing-peer.
+    But while using the same "addTracks()" func on the "remoteMediaStream()", it's getting the media-streams of the remote-peer which is intended to be dispatched to the other existing peers' window.
+
+
+
+Keep track of peer-connections & their associated dataChannels
+29. A js-object will map each username along with the associated peer-connections & dataChannels.
+    The js-obj will be created at the top of the js-file.
+
+30. If any peer leaves to room or cannot connect for some reason, then we need to remove their
+    video & close the associated peer-connection if that's not closed already.
+    For handling such scenarios, we need to use the "iceconnectionstatechange" event-listener on the RTCPeerConnection obj "peer_conn".
+
+
+
 
 

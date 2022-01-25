@@ -13,6 +13,9 @@ var btn_Join = document.querySelector('#btn-join');
 // store the value from the username-input-field
 var username;
 
+// empty js-obj to add the each RTCPeerConnection to this js-obj
+var mapPeers = {}
+
 
 btn_Join.addEventListener('click', () => {
     username = input_Username.value;
@@ -184,7 +187,7 @@ function sendSignal(action, message, socket) {
 
 // function to create RTCPeerConncetion
 function createOffer(peerUsername, channelName) {
-    var peer_conn = new RTCPeerConncetion(null);
+    var peer_conn = new RTCPeerConnection(null);
 
     // add local-tracks; pass the "peer_conn" object
     addLocalTracks(peer_conn);
@@ -202,28 +205,42 @@ function createOffer(peerUsername, channelName) {
         console.log("New Message: " + e.data);
     }
 
-    // create a new video-element for the remote-peer using a function ("createRemoteVideo"); pass the userName of the remote-peer though the function ("createRemoteVideo").
-    // it'll create the video-element along with the video-container & the video-wrapper.
+    // create a new video-element in the HTML file for the remote-peer using a function ("createRemoteVideo");
+    // pass the peerUserName of the remote-peer through the function ("createRemoteVideo"), cause the video-elem will contain the peerUsername in it's id.
+    // it'll create the video-element along with the video-container & the video-wrapper. Lately, return the video-elem to the "remoteVideo" variable.
+    // [NB]:  "peerUsername" is got from the dispatched "payload" from the backend-dj-channel.
     var remoteVideo = createRemoteVideo(peerUsername);
 
     // set the "peer_conn" obj along with the remoteVideo using the "setOnTrack()" function.
     // the media-stream of the new remote peer will be added to the "RTCPeerConnection" object.
     // So that the existing peer window will be able to stream the media of the remote new peer.
     setOnTrack(peer_conn, remoteVideo);
+
+
+    // add each RTCPeerConnection of each peer to the "mapPeers" js-obj.
+    // The key will be the peerUsername & the value will be stored as a
+    // list consisting of the "RTCPeerConnection" obj & the second elem will be the associating dataChannel.
+    mapPeers[peerUserName] = [peer_conn, dc]
+
+    // if any user leaves the room, or cannot connect for some reason, then we need to handle the scenario using the "oniceconnectionstatechange" event-listener.
+    peer_conn.oniceconnectionstatechange = () => {
+        // store the iceconnectionstate of the
+    };
 }
 
 
-// create video-element (video-container) of the remotePeer in the existing peers window.
-// Any new-peer which gets connected create a new video-element underneath the primary video-element
+// create video-element (w/ video-container) of the remotePeer in the existing peers window (HTML).
+// Any new-peer which gets connected create a new video-element underneath the primary video-element in the HTML file of the other existing peers.
 function createRemoteVideo(peerUsername) {
+    // get the video-container elem from the HTML file & store that into a variable ("video_container")
     var video_container = document.querySelector('.video-container');
 
     // create remote-video elem
     var remoteVideo = document.createElement('video');
     // set the id of the newly-created remote-video using the "peerUsername"+ "-video"
     remoteVideo.id = peerUsername + "-video";
-    remoteVideo.autoplay = true;
-    remoteVideo.playsInline = true
+    remoteVideo.autoplay = true;   // as soon as the remoteVideo gets created, it'll start streaming automatically
+    remoteVideo.playsInline = true    // it'll prohibit the browser to play the video in fullscreen by default, it'll start streaming the video from where the video-elem got created
 
     // since the video-element resides inside a div, thus create another element which returns a "div"
     var video_wrapper = document.createElement('div');
@@ -231,16 +248,19 @@ function createRemoteVideo(peerUsername) {
     video_container.appendChild(video_wrapper);
     video_wrapper.appendChild(remoteVideo);
 
-    return remoteVideo;
+    return remoteVideo;    // this "remoteVideo" elem will be saved into a var where the func gets called
 }
+
+
+
 
 
 // function to get the local-media stream & later add those tracks to the "RTCPeerConnection" Obj
 function addLocalTracks(peer_conn) {
-    // make a for-each loop on the localMedia stream to get all the tracks
-    // from the local-media using the "getTracks()" function and add each track to the "peer_conn" object we found from the "localStream" obj.
+    // make a for-each loop on the localMedia stream obj to get all the tracks from the local machine of the existing peers.
+    // Use the foreach-loop on the "getTracks()" func of the local-media-obj and this will return and event as track and will be added each track to the "peer_conn" object we found from making a foreach-loop on the "localStream" obj.
     localStream.getTracks().foreach(track => {
-        peer_conn.addTrack(track, localStream);     // adding each available tracks to the "RTCPeerConncetion" object.
+        peer_conn.addTrack(track, localStream);     // adding each available tracks of the existing peers to the "RTCPeerConnection" object.
     });
 }
 
@@ -252,10 +272,14 @@ function setOnTrack(peer_conn, remoteVideo) {
     // Instantiate the "MediaStream" obj
     var remote_stream = new MediaStream();
 
-    // assign the remote-video-stream of the new peer inside the new remote-video-element
+    // assign the remote-video-stream of the new peer inside the new remote-video-element.
+    // [NB]: The "remoteVideo" elem is called by the "createRemoteVideo()" func & stored inside the "remoteVideo" variable.
     remoteVideo.srcObject = remote_stream;
 
     // create an "ontrack" function on the "peer_conn" object, whose event will be asynchronous & add the tracks to the "remote_stream" object.
+    // [NB]:  Whenever a remote-media-track is found in the RTCPeerConnection ("peer_conn") obj, it'll add the track asynchronously to the
+    // "remoteVideo" elem which is meant to be created for any new peer joined to the room, thus other existing peers will create a "remoteVideo" elem
+    // in their window and start adding tracks of the newly joined peer to their "remoteVideo" elem.
     peer_conn.ontrack = async (e) => {
         remote_stream.addTrack(e.track, remote_stream);
     };

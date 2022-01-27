@@ -251,7 +251,9 @@ YouTube:  https://www.youtube.com/watch?v=FExZvpVvYxA
 >>>>>>>>> [Inside "socket.onmessage()" func] <<<<<<<<<
 27. Get all the info about the "peer", "action" & "message" -dict into the javascript file. Also get the channel-name from the "message" -dict sent from the backend.
 
->>"createOffer()" Function
+
+
+                >>>>>>>>>>>> "createOffer()" Function <<<<<<<<<<<<
 28. Build a condition (checking the backend-peerName-value with the current-frontend-username-value) to avoid displaying the same-peer-connection message to the current user,
     then there will be another condition to check if the "action" key-value from the "payload" contains the value "new-peer", if that's true, then execute another
     func called "createOffer()". This "createOffer()" func will be created by the existing users and will be sent as offer-SDP to the newly connected peer.
@@ -280,15 +282,30 @@ YouTube:  https://www.youtube.com/watch?v=FExZvpVvYxA
 
 
 
-Keep track of peer-connections & their associated dataChannels
+>> Keep track of peer-connections & their associated dataChannels
+>> inside the "createOffer()" func
 29. A js-object will map each username along with the associated peer-connections & dataChannels.
     The js-obj will be created at the top of the js-file.
 
+
+>> Use "oniceconnectionstatechange" func to handle the peer-connection close/failed scenario
+>> inside the "createOffer()" func
 30. If any peer leaves to room or cannot connect for some reason, then we need to remove their
     video & close the associated peer-connection if that's not closed already.
     For handling such scenarios, we need to use the "iceconnectionstatechange" event-listener on the RTCPeerConnection obj "peer_conn".
+        Store the "iceconnectionstate" of the peer inside a variable ("iceConnectionState").
 
 
+>> Gather all the iceCandidates of the local-peer-machine
+>> inside the "createOffer()" func
+31. Create another func "onicecandidate", to gather all the ice-candidates and only after gathering all the "icecandidates", then it'll send the offer SDPs / answer SDPs to the remote peer using the sendSignal().
+    As soon as any new-ice-candidate is found, the SDP's localDescription will be modified. Also, immediately, it'll show the local-SDP of the peer inside the console.
+
+    [inside the "onicecandidate" func]
+    >> Send the local SDP to the remote-peer using the "sendSignal" func.
+        Create the "sendSignal" func through which a string called "new-offer" & a dictionary will be passed.
+        The dict/js-obj will contain the localdescription as 'sdp' key.
+        [Important] Another key-value pair will be the receiver_channel_name so that the offer-sdp is sent only to the newly-joined-peer.
 
 
 

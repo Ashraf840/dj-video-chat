@@ -79,7 +79,7 @@ btn_Join.addEventListener('click', () => {
     // receive any messages sent from the backend consumer as json-format
     socket.onmessage = function (e) {
         console.log('Frontend Websocket ("onmessage" function): Receive messages!')
-    // console.log(JSON.parse(e.data));
+        // console.log(JSON.parse(e.data));
 
         // de-serialize the json-string into js-object
         // [NOTE]: equivalent to "json.loads()" in python for de-serializing into the native format
@@ -91,7 +91,7 @@ btn_Join.addEventListener('click', () => {
         var action = parsedData['payload']['action'];
         var receiver_channel_name = parsedData['payload']['message']['receiver_channel_name'];
         // console.log('Peer Username: ', peerUsername)
-
+        console.log('Initial Receiver Channel: ' + receiver_channel_name)
 
         // check if the username is equal to the peerUsername, then avoid displaying the payload to the current-client. (other clients will see the current-client's connection-message)
         // the "username" will get the value from the user-input-field for joining a room.
@@ -103,12 +103,21 @@ btn_Join.addEventListener('click', () => {
         // since the current user gets avoided, the other existing users will now create an offer, which will later be sent to the new-peer.
         // The offer will consist of peerUsername & it's channel-name
         if (action == 'new-peer') {
-            // offer-sdp will be created by other existing-peers
-            createOffer(peerUsername, receiver_channel_name);
+            // offer-sdp will be created by other existing-peers; later sent to the newly-joined-peer
+            createOfferer(peerUsername, receiver_channel_name, socket=socket);
             console.log('payload: ', payload);
             return;     // won't allow the JS to execute anymore code
         }
 
+        // if a new-offer is sent from the backend, then retrieve the offer-SDP.
+        // also inside this func, an answer-SDP will also be created which will be sent in the backend-dj-channel
+        if (action == 'new-offer') {
+            var offer_sdp = payload['message']['sdp'];
+            console.log("Offer SDP:", offer_sdp);
+
+            // build the func "createAnswerer" beneath the func "createOfferer". The "createAnswer()" func will be used by the newly-joined-peer to send answer-SDP to the other-existing-peers through using the backend-dj-channel.
+            createAnswerer(offer_sdp, peerUsername, receiver_channel_name);
+        }
     }
 
     // disconnect the frontend websocket from the backend consumer
@@ -140,7 +149,7 @@ const constraints = {
 //  we are calling the local-video streaming element from the DOM.
 const localVideo = document.querySelector('#local-video');
 
-
+// stream the local-video of the current-peer's machine & display that to the current-peer
 // it's an asynchronous-func, thus we need to make sure the code is fully executed before moving on to the next part.
 var userMedia = navigator.mediaDevices.getUserMedia(constraints)
     // as soon as the 'getUserMedia' finished its execution, it'll return a MediaStream object.
@@ -185,23 +194,25 @@ function sendSignal(action, message, socket) {
 
 
 
-// function to create RTCPeerConncetion
-function createOffer(peerUsername, channelName) {
+// -------------------------- function to create offer-SDP through "RTCPeerConncetion" object ---------------------------------------------------------------
+function createOfferer(peerUsername, channelName, socket) {
+    console.log('"createOfferer" func is called!');
     var peer_conn = new RTCPeerConnection(null);
+    console.log('"RTCPeerConnection" object is created!' + peer_conn);
 
     // add local-tracks; pass the "peer_conn" object
     addLocalTracks(peer_conn);
 
     // instantiate a dataChannel using the "peer_conn" obj
     var dc = peer_conn.createDataChannel('channel');
+    console.log('Data Channel is instantiated!' + dc);
 
-    // open the data-channel connection
-    dc.onopen = e => {
+    dc.onopen = () => {
         console.log('Connection Opened!');
     }
 
     // create an "onmessage" func to receive any message/dict/packet from the other client
-    dc.onmessage = e => {
+    dc.onmessage = (e) => {
         console.log("New Message: " + e.data);
     }
 
@@ -220,13 +231,85 @@ function createOffer(peerUsername, channelName) {
     // add each RTCPeerConnection of each peer to the "mapPeers" js-obj.
     // The key will be the peerUsername & the value will be stored as a
     // list consisting of the "RTCPeerConnection" obj & the second elem will be the associating dataChannel.
-    mapPeers[peerUserName] = [peer_conn, dc]
+    mapPeers[peerUsername] = [peer_conn, dc]
 
     // if any user leaves the room, or cannot connect for some reason, then we need to handle the scenario using the "oniceconnectionstatechange" event-listener.
     peer_conn.oniceconnectionstatechange = () => {
-        // store the iceconnectionstate of the
+        // store the iceconnectionstate of the "peer_conn" obj to a variable; basically storing the "iceconnectionstate" of each existing peer, when creating offer-SDP.
+        var iceConnectionState = peer_conn.iceConnectionState;
+
+        // delete the peer_connection if its closed/failed/disconnected
+        if (iceConnectionState === 'failed' || iceConnectionState === 'disconnected' || iceConnectionState === 'closed') {
+            delete mapPeers[peerUserName];
+
+            // close the peer_conn if that's not closed
+            if (iceConnectionState != 'closed') {
+                peer_conn.close();
+            }
+
+            // lastly remove the remote-video-element from the existing-peer-windows by calling the func "removeVideo()" func & passing the "remoteVideo" elem.
+            removeVideo(remoteVideo);
+        }
     };
+
+
+    // sending offer to the backend-dj-channel
+    // gather all the iceCandidates of the local-peer's machine before sending to both the offer & answer SDP
+    peer_conn.addEventListener('icecandidate', e => {
+        // get the candidate from the 'event' obj
+        if (e.candidate) {
+            // print the local-description of the peer after gathering all the candidates
+            console.log('New ICE Candidate: ' + peer_conn.localDescription);
+            return;
+        }
+
+        // send the offer-SDP  along w/ the receiver_channel_name to the remote-peer using the "sendSignal()" function,
+        // which is created before the "createOfferer()" func.
+        // it also set the value of the 'action' of the func to "new-offer", which was initially used to be "new-peer".
+        sendSignal('new-offer', {
+            'sdp': peer_conn.localDescription, // send the local-sdp of the existing-peer
+
+            // the existing-peers-channels will be dispatched to the backend-dj-channel bearing the purpose of sending offer-SDP to the newly-added-peer,
+            // cause this "sendSignal()" func is called inside the "createOfferer()" func, & this "createOfferer()" func is only instantiated based on the
+            // condition that the "webSocket.onmessage()" event receives any payload from the backend-dj-channel which is containing the 'action' key as
+            // "new-peer". Since the action == "new-peer" will only get in the other-existing-peers frontend in the room-group, thus the other-peers will
+            // send thier own channel-names-along with their SDPs (session description protocols) to the backend-dj-channel.
+            'receiver_channel_name': channelName, // the receiver-channel-name is used to sent the offer-sdp only to the newly-joined-peer. Get from the "createOfferer()" func's param.
+        }, socket=socket);
+    });
+
+
+
+    // set-local-description of the local-machine
+    // Initiates the creation of an SDP-offer using the "RTCPeerConnection" object for the purpose of starting a new WebRTC connection to the remote-peer.
+    // "createOffer()" function:  built-in function provided by the "RTCPeerConnection" object
+    peer_conn.createOffer()
+        .then(o => {
+            localSDP = peer_conn.setLocalDescription(o);
+            console.log('Local Description: ' + localSDP);
+        })
+        .then(() => {
+            console.log('Local Description set successfully!');
+        });
 }
+// -------------------------- function to create offer-SDP through "RTCPeerConncetion" object ---------------------------------------------------------------
+
+
+
+
+
+
+
+// -------------------------- function to create answer-SDP through "RTCPeerConncetion" object ---------------------------------------------------------------
+function createAnswerer(offer_sdp, peerUsername, receiver_channel_name) {
+    // will be build later
+    return;
+}
+// -------------------------- function to create answer-SDP through "RTCPeerConncetion" object ---------------------------------------------------------------
+
+
+
+
 
 
 // create video-element (w/ video-container) of the remotePeer in the existing peers window (HTML).
@@ -257,14 +340,19 @@ function createRemoteVideo(peerUsername) {
 
 // function to get the local-media stream & later add those tracks to the "RTCPeerConnection" Obj
 function addLocalTracks(peer_conn) {
+    console.log('"addLocalTracks" func is called!');
     // make a for-each loop on the localMedia stream obj to get all the tracks from the local machine of the existing peers.
     // Use the foreach-loop on the "getTracks()" func of the local-media-obj and this will return and event as track and will be added each track to the "peer_conn" object we found from making a foreach-loop on the "localStream" obj.
-    localStream.getTracks().foreach(track => {
+    localStream.getTracks().forEach(track => {
         peer_conn.addTrack(track, localStream);     // adding each available tracks of the existing peers to the "RTCPeerConnection" object.
+        console.log('Local Media Track ("addLocalTracks" func): ' + track)
     });
 }
 
 
+
+
+// dataChannel 'on_message' func (will be created later)
 
 
 // get the media stream of the new remote peer
@@ -282,5 +370,17 @@ function setOnTrack(peer_conn, remoteVideo) {
     // in their window and start adding tracks of the newly joined peer to their "remoteVideo" elem.
     peer_conn.ontrack = async (e) => {
         remote_stream.addTrack(e.track, remote_stream);
+        console.log('Fetch & set the track of the remote peer:', e.track);
     };
+}
+
+
+
+
+
+
+// define the "removeVideo" func to remove the "remoteVideo" element
+function removeVideo(video) {
+    var videoWrapper = video.parentNode;   // get the "div" containing the remote-video-elem
+    video_wrapper.parentNode.removeChild(videoWrapper);    // deleting the parentNode of that div-elem (which is "video-container" elem.
 }

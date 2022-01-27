@@ -29,13 +29,45 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         receive_dict = json.loads(text_data)   # convert the json-dict into python-dict
         message = receive_dict['message']     # extract the message from the converted-python-dict, cause we're going to send a dict which has that msg attribute.
+        action = receive_dict['action']       # retrieve the "action" key-value
         # [NOTE]:  Thus, we need to construct an object (dictionary) with a 'message'-key from the frontend & then serialize that into JSON-obj before sending that into the backend consumer.
 
         print('The payload (sent from the frontend):', message)
 
+        # this code-block is build after creating the offer-SDP in the frontend JS.
+        # for sending offer/answer SDPs, create a condition based on the "action" value & send another payload which is meant to share the SDP to the peers
+        # this offer-SDP sending process needs to be handled in the frontend as well
+        if (action == 'new-offer') or (action == 'new-answer'):
+            print('New Offer is going to be created!')
+            print('#'*50)
+            print('Channel - newly joined peer channel: ', receive_dict['message']['receiver_channel_name'])
+            print('Channel - existing peer channel: ', self.channel_name)
+            print('#'*50)
+            # store the receiver-channel-name from the payload sent from the frontend
+            receiver_channel_name = receive_dict['message']['receiver_channel_name']
+            print('Receiver Channel Name (sent from the frontend - Newly Joined Peers Channel):', receiver_channel_name)
+            message['receiver_channel_name'] = self.channel_name
+            print('Backend Channel Name (built while anyone instantiate the channel):', message['receiver_channel_name'])
+
+            # send the offer-sdp specifically to the newly-joined-peer.
+            await self.channel_layer.send(
+                # send the specific channel, to the specific peer
+                receiver_channel_name,
+                {
+                    # [Compulsory Key] define the type, which will be corresponding to the async-func-name. The mentioning func ("send_sdp") will be used by the consumer to send the dict/msg to all the peers of the group.
+                    'type': 'send_sdp',
+                    # payload, received from a client (peer) of a room/group
+                    # 'payload': message,
+                    'receive_dict': receive_dict,  # contains the 'peer', 'action', 'message' key-value pairs
+                }
+            )
+
+
         # the "text_data" will contain the message as a "dict".
         # Thus, we'll assign a new KEY-VALUE pair in the sub-dict contained by the message-dict.
         # This key-value pair will contain the channel_name
+        # [NB]:  Both the existing-peers & the newly-joined-peers will connect with the backend-dj-channel & get a unique-channel-name.
+        #   This channels will also be dispatched to every peers' frontend.
         message['receiver_channel_name'] = self.channel_name
 
         # now we will send/broadcast the msg to all the other peers of the group.

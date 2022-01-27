@@ -195,6 +195,7 @@ function sendSignal(action, message, socket) {
 
 
 // -------------------------- function to create offer-SDP through "RTCPeerConncetion" object ---------------------------------------------------------------
+// this func will be used by the other-existing-peers who are already joined in the room to create & send offer-SDP to the newly-joined-peer-socket.
 function createOfferer(peerUsername, channelName, socket) {
     console.log('"createOfferer" func is called!');
     var peer_conn = new RTCPeerConnection(null);
@@ -301,6 +302,7 @@ function createOfferer(peerUsername, channelName, socket) {
 
 
 // -------------------------- function to create answer-SDP through "RTCPeerConncetion" object ---------------------------------------------------------------
+// this func will be used by the newly-joined-peer to send back it's answer-SDP in response to the offer-SDP it gets.
 function createAnswerer(offer_sdp, peerUsername, receiver_channel_name) {
     // will be build later
     return;

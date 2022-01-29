@@ -131,7 +131,6 @@ btn_Join.addEventListener('click', () => {
 
             // the existing-peers will set it's remoteDescription to their machines
             peer.setRemoteDescription(answer_sdp);
-
             return;
         }
     }
@@ -166,10 +165,14 @@ const constraints = {
 const localVideo = document.querySelector('#local-video');
 
 // get the audio mute-unmute button
-const btnToggleAudio = document.querySelector('btn-toggle-audio');
+var btnToggleAudio = document.querySelector('#btn-toggle-audio');
 // get the video on-off button
-const btnToggleVideo = document.querySelector('btn-toggle-video');
+var btnToggleVideo = document.querySelector('#btn-toggle-video');
 
+
+//btnToggleAudio.addEventListener('click', () => {
+//    alert('Audio btn is clicked!')
+//});
 
 // stream the local-video of the current-peer's machine & display that to the current-peer
 // it's an asynchronous-func, thus we need to make sure the code is fully executed before moving on to the next part.
@@ -195,8 +198,8 @@ var userMedia = navigator.mediaDevices.getUserMedia(constraints)
         // audio-btn mute/un-mute toggle func
         btnToggleAudio.addEventListener('click', () => {
             console.log('Audio btn clicked!');
-            // inverting the previous state of the audio
-            btnToggleAudio[0].enabled = !btnToggleAudio[0].enabled;
+            // inverting the previous state of the audio-track, (not the audio-btn, but the audio-track)
+            audioTracks[0].enabled = !audioTracks[0].enabled;
 
             // if the audio is enabled, then set the innerHTML of the audio-btn to "Audio Mute"
             if (audioTracks[0].enabled) {
@@ -211,10 +214,10 @@ var userMedia = navigator.mediaDevices.getUserMedia(constraints)
         btnToggleVideo.addEventListener('click', () => {
             console.log('Video btn clicked!');
             // inverting the previous state of the audio
-            btnToggleVideo[0].enabled = !btnToggleVideo[0].enabled;
+            videoTracks[0].enabled = !videoTracks[0].enabled;
 
             // if the audio is enabled, then set the innerHTML of the audio-btn to "Audio Mute"
-            if (btnToggleVideo[0].enabled) {
+            if (videoTracks[0].enabled) {
                 btnToggleVideo.innerHTML = 'Video Off';
             }
 
@@ -365,46 +368,43 @@ function createOfferer(peerUsername, channelName, socket) {
 // this func will be used by the newly-joined-peer to send back it's answer-SDP in response to the offer-SDP it gets.
 function createAnswerer(offer_sdp, peerUsername, channelName, socket) {
     console.log('"createAnswerer" func is called!');
-    var peer_conn = new RTCPeerConnection(null);
-    console.log('"RTCPeerConnection" object is created ("createAnswerer" func)!' + peer_conn);
+    var peer_conn_newP = new RTCPeerConnection(null);
+    console.log('"RTCPeerConnection" object is created ("createAnswerer" func)!' + peer_conn_newP);
 
     // add local-tracks; pass the "peer_conn" object (probably the existing other peers local-tracks)
-    addLocalTracks(peer_conn);
+    addLocalTracks(peer_conn_newP);
 
     var remoteVideo = createRemoteVideo(peerUsername);
-    setOnTrack(peer_conn, remoteVideo);
+    setOnTrack(peer_conn_newP, remoteVideo);
 
 
     // [IMPORTANT NOTE] we don't create a new dataChannel in the answer-SDP creation func ("createAnswerer"), we'll use the "onDataChannel" event-listener to connect with the dataChannel that is previously initiated in the "createOfferer()" func.
     // By using that event-listener, we'll store the dataChannel into a variable that is initially created by the "createOfferer()" func.
-//
-//    peer_conn.ondatachannel = e => {
-//        console.log('Triggering previously connected datachannel!');
-//    };
-    peer_conn.addEventListener('datachannel', e => {
+    peer_conn_newP.addEventListener('datachannel', e => {
         // now we can get the dataChannel from the "e" object, which will be assigned as an attribute to the newly created 'RTCPeerConnection' obj.
         // [NOTE]:  This 'RTCPeerConnection' is created by/for the newly-joined peer, cause inside the "socket.onmessage", we previously built a condition to check if the value of the action is "new-offer", then it'll execute the "createAnswerer()" func.
-        peer_conn.dc = e.channel;
+        // invoking the dataChannel of the previously created dataChannel (created by the other-existing-peers).
+        peer_conn_newP.dc = e.channel;
         console.log('Triggering previously connected datachannel!');
         // console.log('Data Channel (triggering DC from "createAnswerer()" func): ' + e);
 
-        peer_conn.dc.onopen = () => {
+        peer_conn_newP.dc.onopen = () => {
             console.log('Connection Opened!');
         }
 
         // create an "onmessage" func to receive any message/dict/packet from the other client
-        peer_conn.dc.onmessage = (e) => {
+        peer_conn_newP.dc.onmessage = (e) => {
             console.log("New Message: " + e.data);
         }
 
-        mapPeers[peerUsername] = [peer_conn, peer_conn.dc];
+        mapPeers[peerUsername] = [peer_conn_newP, peer_conn_newP.dc];
     });
 
 
     // if any user leaves the room, or cannot connect for some reason, then we need to handle the scenario using the "oniceconnectionstatechange" event-listener.
-    peer_conn.oniceconnectionstatechange = () => {
+    peer_conn_newP.oniceconnectionstatechange = () => {
         // store the iceconnectionstate of the "peer_conn" obj to a variable; basically storing the "iceconnectionstate" of each existing peer, when creating offer-SDP.
-        var iceConnectionState = peer_conn.iceConnectionState;
+        var iceConnectionState = peer_conn_newP.iceConnectionState;
 
         // delete the peer_connection if its closed/failed/disconnected
         if (iceConnectionState === 'failed' || iceConnectionState === 'disconnected' || iceConnectionState === 'closed') {
@@ -412,7 +412,7 @@ function createAnswerer(offer_sdp, peerUsername, channelName, socket) {
 
             // close the peer_conn if that's not closed
             if (iceConnectionState != 'closed') {
-                peer_conn.close();
+                peer_conn_newP.close();
             }
 
             // lastly remove the remote-video-element from the existing-peer-windows by calling the func "removeVideo()" func & passing the "remoteVideo" elem.
@@ -423,11 +423,11 @@ function createAnswerer(offer_sdp, peerUsername, channelName, socket) {
 
     // sending offer to the backend-dj-channel
     // gather all the iceCandidates of the local-peer's machine before sending to both the offer & answer SDP
-    peer_conn.addEventListener('icecandidate', e => {
+    peer_conn_newP.addEventListener('icecandidate', e => {
         // get the candidate from the 'event' obj
         if (e.candidate) {
             // print the local-description of the peer after gathering all the candidates
-            console.log('New ICE Candidate: ' + peer_conn.localDescription);
+            console.log('New ICE Candidate: ' + peer_conn_newP.localDescription);
             return;
         }
 
@@ -435,7 +435,7 @@ function createAnswerer(offer_sdp, peerUsername, channelName, socket) {
         // which is created before the "createANswerer()" func.
         // it also set the value of the 'action' of the func to "new-answer", which was previously used to be "new-offer".
         sendSignal('new-answer', {
-            'sdp': peer_conn.localDescription, // send the local-sdp of the existing-peer
+            'sdp': peer_conn_newP.localDescription, // send the local-sdp of the existing-peer
 
             // the newly-joined-peer-channel will be dispatched to the backend-dj-channel bearing the purpose of sending answer-SDP to the other existing-peers,
             'receiver_channel_name': channelName, // the receiver-channel-name is used to sent the answer-sdp only to the other existing-peers.
@@ -448,14 +448,14 @@ function createAnswerer(offer_sdp, peerUsername, channelName, socket) {
     // Initiates the creation of an answer-SDP using the "RTCPeerConnection" object.
     // newly-joined-peer's localDescription using the "setRemoteDescription(offer_sdp)", but this is set inside the new-peer's machine, thus this needs to be sent to the other-existing-peers' machine. Thus this "setRemoteDescription(answer)" inside the "socket.onmessage()" func.
     // [NOTE]:  The remote-description of the existing-peers is set inside the newly-joined-peer's "RTCPeerConnection" obj. Later, asynchronously, the newly-joined-peer's localDescription is set in its own RTCPeerConnection object.
-    peer_conn.setRemoteDescription(offer_sdp)
+    peer_conn_newP.setRemoteDescription(offer_sdp)
     .then(() => {
         console.log('Remote description set successfully for %s!', peerUsername);
-        return peer_conn.createAnswer();
+        return peer_conn_newP.createAnswer();
     })
     .then(a => {
         console.log('Answer created!');
-        localSDP = peer_conn.setLocalDescription(a);
+        localSDP = peer_conn_newP.setLocalDescription(a);
         console.log('Local Description: ' + localSDP);
     });
 }
